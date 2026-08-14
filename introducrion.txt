@@ -1,0 +1,24 @@
+index py pypline
+extraction / edf py
+    extraction (API gouvernement).
+
+    Telecharge les donnees RTE eCO2mix (consommation, production par filiere,
+    taux de CO2...) depuis l'API ODRE / data.gouv.fr et les sauvegarde
+    localement en JSON lisible
+
+ingestion py
+
+    ingestion et validation.
+
+    1. Validation du format   : verifie que le JSON brut a la structure attendue
+                                 et que les champs obligatoires sont presents.
+    2. Conversion unifiee     : ne garde que les colonnes utiles au modele
+                                 (date_heure, consommation, nucleaire, eolien,
+                                 solaire, hydraulique, taux_co2).
+    3. Sauvegarde intermediaire : ecrit un CSV propre, pret pour l'ETL
+
+INIT py
+ c'est pour  dire à Python "ce dossier est un package importable". Sans __init__.py dans extraction/ et ingestion/,
+  la ligne from extraction.EDF import ... dans index.py échouerait (ModuleNotFoundError)
+
+  
