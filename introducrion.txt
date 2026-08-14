@@ -21,4 +21,42 @@ INIT py
  c'est pour  dire à Python "ce dossier est un package importable". Sans __init__.py dans extraction/ et ingestion/,
   la ligne from extraction.EDF import ... dans index.py échouerait (ModuleNotFoundError)
 
-  
+
+
+  Base de donnais
+1
+  CREATE DATABASE energia_flux;
+SHOW DATABASES;
+
+
+2
+USE energia_flux;
+
+CREATE TABLE consommation (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    date_heure DATETIME NOT NULL UNIQUE,
+    consommation FLOAT,
+    nucleaire FLOAT,
+    eolien FLOAT,
+    solaire FLOAT,
+    hydraulique FLOAT,
+    taux_co2 FLOAT
+);
+
+
+etl.py va lire ton CSV et remplir MySQL
+
+
+connecter_db()  ouvre la connexion à MySQL, en lisant host/user/password/nom de la base depuis .env
+charger_lignes_csv() relit ton CSV unifié
+inserer_dans_mysql() insère chaque ligne dans la table consommation. INSERT IGNORE veut dire : si une ligne avec la même date_heure
+existe déjà, MySQL la saute au lieu de planter — donc tu peux relancer le script plusieurs fois sans créer de doublons
+
+sauvegarder_datalake()  fait une copie du CSV avec la date/heure dans le nom, dans data/datalake/. C'est ton historique brut,
+séparé de MySQL
+
+verifier avec
+
+USE energia_flux;
+SELECT COUNT(*) FROM consommation;
+SELECT * FROM consommation LIMIT 5;
