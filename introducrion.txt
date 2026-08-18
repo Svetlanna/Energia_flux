@@ -69,3 +69,14 @@ entrainement du modele de prediction. entrainement/entrainement.py
   entrainer un modele de regression randomForestRegressor
   evaluer sa precision avec la MAE
   sauvegarder le modele entraine + ses infos, de facon horodatee versionnement
+
+prediction /prediction.py
+
+Trouve et charge le modele le plus recent dans le dossier donne.
+  # glob.glob() renvoie la liste des fichiers qui correspondent a un motif.
+  # Le "*" remplace n'importe quelle partie du nom (ici, la date/heure).
+      # Le nom des fichiers contient la date au format AAAA-MM-JJTHH-MM-SS.
+    # Trier ces noms par ordre alphabetique revient a les trier par date,
+    # car ce format ecrit les nombres du plus "grand" (annee) au plus
+    # "petit" (secondes) -> l'ordre alphabetique suit l'ordre chronologique.
+      # Le dernier element de la liste triee est donc le plus recent.
