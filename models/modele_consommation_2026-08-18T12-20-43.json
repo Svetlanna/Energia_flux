@@ -1,0 +1,18 @@
+{
+  "nom_modele": "modele_consommation_2026-08-18T12-20-43",
+  "date_entrainement": "2026-08-18T12-20-43",
+  "algorithme": "RandomForestRegressor",
+  "features": [
+    "heure",
+    "jour_semaine",
+    "mois",
+    "nucleaire",
+    "eolien",
+    "solaire",
+    "hydraulique",
+    "taux_co2"
+  ],
+  "mae": 1102.807704081633,
+  "nb_lignes_entrainement": 783,
+  "nb_lignes_test": 196
+}

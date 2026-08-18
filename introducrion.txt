@@ -60,3 +60,12 @@ verifier avec
 USE energia_flux;
 SELECT COUNT(*) FROM consommation;
 SELECT * FROM consommation LIMIT 5;
+
+entrainement du modele de prediction. entrainement/entrainement.py
+  se connecter a MySQL et recuperer les donnees stockees
+   nettoyer les donnees
+  creer des  features
+  separer les donnees en un jeu d'entrainement et un jeu de test
+  entrainer un modele de regression randomForestRegressor
+  evaluer sa precision avec la MAE
+  sauvegarder le modele entraine + ses infos, de facon horodatee versionnement
