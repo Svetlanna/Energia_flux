@@ -1,7 +1,7 @@
-# Lit le CSV unifie (ingestion.py)
-#   1. Stocke chaque ligne dans MySQL table `consommation`.
+# lit le CSV unifie (ingestion.py)
+#   1. Stocke chaque ligne dans MySQL table consommation.
 #   2. Garde une copie horodatee dans le datalake (historique brut des extractions).
-#
+
 # Les identifiants MySQL sont lus depuis les variables d'environnement (.env),
 # jamais ecrits en dur dans le code.
 
@@ -33,7 +33,6 @@ def connecter_db():
 def charger_lignes_csv(fichier_entree):
 
     # Lit le CSV unifie et retourne la liste des lignes
-    # Returns  list[dict]: une entree par ligne du CSV.
 
     with open(fichier_entree, "r", encoding="utf-8") as f:
         return list(csv.DictReader(f))
@@ -73,7 +72,7 @@ def inserer_dans_mysql(connexion, lignes):
 
 def sauvegarder_datalake(fichier_entree, dossier_datalake):
 
-    # Copie le CSV unifie dans le datalake, avec un nom horodate, pour garder
+    # copie le CSV unifie dans le datalake, avec un nom horodate, pour garder
     # un historique des extractions
 
     os.makedirs(dossier_datalake, exist_ok=True)
@@ -85,7 +84,7 @@ def sauvegarder_datalake(fichier_entree, dossier_datalake):
 
 def executer_etl(fichier_entree, dossier_datalake):
 
-    # Enchaine le chargement du CSV, l'insertion MySQL et la copie datalake.
+    # enchaine le chargement du CSV, l'insertion MySQL et la copie datalake.
     lignes = charger_lignes_csv(fichier_entree)
 
     connexion = connecter_db()

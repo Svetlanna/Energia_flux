@@ -5,10 +5,10 @@ import csv
 FICHIER_ENTREE = "data/eco2mix-national.json"
 FICHIER_SORTIE = "data/eco2mix-unifie.csv"
 
-# Champs obligatoires un enregistrement sans ces valeurs est inexploitable
+# champs obligatoires un enregistrement sans ces valeurs est inexploitable
 CHAMPS_OBLIGATOIRES = ["date_heure", "consommation"]
 
-# Colonnes du format unifie dans l'ordre de sortie
+# colonnes du format unifie dans l'ordre de sortie
 COLONNES_UNIFIEES = [
     "date_heure",
     "consommation",
@@ -24,11 +24,6 @@ def valider_enregistrement(fields):
 
     # Verifie qu'un enregistrement contient les champs obligatoires et non nuls.
 
-    # Args:
-    #     fields (dict): le contenu de "fields" pour un record de l'API.
-
-    # Returns:
-    #     bool: True si l'enregistrement est valide, False sinon.
 
     for champ in CHAMPS_OBLIGATOIRES:
         if fields.get(champ) is None:
@@ -37,29 +32,15 @@ def valider_enregistrement(fields):
 
 
 def convertir_enregistrement(fields):
-    # Extrait uniquement les colonnes du format unifie depuis un enregistrement brut.
-
-    # Args:
-    #     fields (dict): le contenu de "fields" pour un record de l'API.
-
-    # Returns:
-    #     dict: une ligne au format unifie (valeurs manquantes -> None).
 
     return {colonne: fields.get(colonne) for colonne in COLONNES_UNIFIEES}
 
 
 def ingerer(fichier_entree, fichier_sortie):
-    """
-    Lit le JSON brut valide et convertit chaque enregistrement,
-    puis sauvegarde le resultat en CSV.
 
-    Args:
-        fichier_entree (str): chemin du JSON brut sortie de EDF.py.
-        fichier_sortie (str): chemin du CSV unifie a produire.
+    # Lit le JSON brut valide et convertit chaque enregistrement,
+    # puis sauvegarde le resultat en CSV.
 
-    Returns:
-        tuple: (nb_valides, nb_rejetes, chemin_sortie)
-    """
     with open(fichier_entree, "r", encoding="utf-8") as f:
         donnees_brutes = json.load(f)
 
@@ -73,15 +54,15 @@ def ingerer(fichier_entree, fichier_sortie):
     for record in records:
         fields = record.get("fields", {})
 
-        # Validation du format
+        # validation du format
         if not valider_enregistrement(fields):
             nb_rejetes += 1
             continue
 
-        #Conversion vers un format unifie
+        #conversion vers un format unifie
         lignes_valides.append(convertir_enregistrement(fields))
 
-    #Sauvegarde intermediaire
+    #sauvegarde intermediaire
     os.makedirs(os.path.dirname(fichier_sortie), exist_ok=True)
     with open(fichier_sortie, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=COLONNES_UNIFIEES)
