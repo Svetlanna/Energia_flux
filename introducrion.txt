@@ -84,3 +84,33 @@ Trouve et charge le modele le plus recent dans le dossier donne.
     on construit un DataFrame a une seule ligne, avec les colonnes
     # DANS LE MEME ORDRE que lors de l'entrainement. Sinon le modele
     # se trompe de colonne (ex. il croit que "eolien" est "heure").
+
+
+pip install fastapi uvicorn
+
+fastapi le framework qui définit les routes (/predict)
+uvicorn → le serveur qui fait réellement tourner l'API (FastAPI décrit ce qu'il faut faire, uvicorn l'exécute)
+
+prediction/api.py
+    # Le modele est charge UNE SEULE FOIS, au demarrage du service.
+    # Le recharger a chaque requete serait lent (relire un fichier a chaque
+    # appel) et inutile (le fichier ne change pas entre deux requetes)
+
+        Microservice de prediction - API FastAPI.
+
+        Ce fichier rend le modele de prediction accessible par le reseau,
+        sous forme d'une petite API web
+         Un autre service (comme le Gateway Express) pourra lui envoyer une requete pour obtenir une prediction
+        sans avoir besoin d'executer du code Python lui-meme.
+
+        Au demarrage du service :
+          . le modele le plus recent est charge depuis le dossier models/
+          .si aucun modele n'est trouve, le service demarre quand meme,
+            mais repondra une erreur claire (503) a chaque demande de
+            prediction, plutot que de planter completement
+
+        Route disponible :
+          POST /predict
+            Recoit les donnees d'entree en JSON (heure, jour, meteo, etc.),
+            et renvoie la prediction de consommation en MW, avec la version
+            du modele utilise et l'heure de la reponse.
