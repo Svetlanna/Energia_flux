@@ -80,3 +80,7 @@ Trouve et charge le modele le plus recent dans le dossier donne.
     # car ce format ecrit les nombres du plus "grand" (annee) au plus
     # "petit" (secondes) -> l'ordre alphabetique suit l'ordre chronologique.
       # Le dernier element de la liste triee est donc le plus recent.
+  Calcule une prediction de consommation a partir d'un dict d'entrees.
+    on construit un DataFrame a une seule ligne, avec les colonnes
+    # DANS LE MEME ORDRE que lors de l'entrainement. Sinon le modele
+    # se trompe de colonne (ex. il croit que "eolien" est "heure").
