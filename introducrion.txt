@@ -1,116 +1,216 @@
-index py pypline
-extraction / edf py
-    extraction (API gouvernement).
 
-    Telecharge les donnees RTE eCO2mix (consommation, production par filiere,
-    taux de CO2...) depuis l'API ODRE / data.gouv.fr et les sauvegarde
-    localement en JSON lisible
+1. extraction/EDF.py
 
-ingestion py
+rôle du fichier aller chercher les données brutes sur Internet et les
+enregistrer telles quelles en JSON, sans les transformer
 
-    ingestion et validation.
+telecharger_json(url, chemin_fichier)
+    Fait une requête HTTP vers l'API RTE éCO2mix (via requests.get), puis
+    écrit la réponse dans un fichier JSON. Crée le dossier de destination
+    s'il n'existe pas encore (os.makedirs). Renvoie le chemin du fichier
+    créé
 
-    1. Validation du format    verifie que le JSON brut a la structure attendue
-                                 et que les champs obligatoires sont presents
-    2. Conversion unifiee      ne garde que les colonnes utiles au modele
-                                 (date_heure, consommation, nucleaire, eolien,
-                                 solaire, hydraulique, taux_co2)
-    3. Sauvegarde intermediaire   ecrit un CSV propre, pret pour l'ETL
-
-INIT py
- c'est pour  dire à Python "ce dossier est un package importable". Sans __init__.py dans extraction/ et ingestion/,
-  la ligne from extraction.EDF import dans index.py échouerait (ModuleNotFoundError)
+telecharger_meteo(url, chemin_fichier)
+    Exactement le même principe, mais pour l'API météo Open-Meteo. Une
+    fonction séparée plutôt que de réutiliser telecharger_json, parce que
+    les deux téléchargements pourraient un jour avoir des besoins
+    différents (gestion d'erreur, format de réponse, etc)
 
 
+2. ingestion/ingestion.py
 
-  Base de donnais
-1
-  CREATE DATABASE energia_flux;
-SHOW DATABASES;
+rôle du fichier lire le JSON brut de RTE, vérifier qu'il est exploitable,
+et le transformer en CSV propre avec uniquement les colonnes utiles
 
+valider_enregistrement(fields)
+    Prend un enregistrement (un dictionnaire Python) et vérifie que les
+    champs obligatoires (date_heure, consommation) existent et ne sont pas
+    vides. Renvoie True ou False. Sert de filtre : un enregistrement invalide
+    est rejeté plutôt que d'entrer dans le CSV avec des trous
 
-2
-USE energia_flux;
+convertir_enregistrement(fields)
+    Prend un enregistrement complet (qui peut contenir plein de colonnes
+    inutiles) et ne garde que les 7 colonnes définies dans COLONNES_UNIFIEES.
+    C'est le tri : on jette ce qui ne sert pas au modèle
 
-CREATE TABLE consommation (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    date_heure DATETIME NOT NULL UNIQUE,
-    consommation FLOAT,
-    nucleaire FLOAT,
-    eolien FLOAT,
-    solaire FLOAT,
-    hydraulique FLOAT,
-    taux_co2 FLOAT
-);
-
-
-etl.py va lire ton CSV et remplir MySQL
-
-
-connecter_db()  ouvre la connexion à MySQL, en lisant host/user/password/nom de la base depuis .env
-charger_lignes_csv() relit ton CSV unifié
-inserer_dans_mysql() insère chaque ligne dans la table consommation. INSERT IGNORE veut dire : si une ligne avec la même date_heure
-existe déjà, MySQL la saute au lieu de planter — donc tu peux relancer le script plusieurs fois sans créer de doublons
-
-sauvegarder_datalake()  fait une copie du CSV avec la date/heure dans le nom, dans data/datalake/. C'est ton historique brut,
-séparé de MySQL
-
-verifier avec
-
-USE energia_flux;
-SELECT COUNT(*) FROM consommation;
-SELECT * FROM consommation LIMIT 5;
-
-entrainement du modele de prediction. entrainement/entrainement.py
-  se connecter a MySQL et recuperer les donnees stockees
-   nettoyer les donnees
-  creer des  features
-  separer les donnees en un jeu d'entrainement et un jeu de test
-  entrainer un modele de regression randomForestRegressor
-  evaluer sa precision avec la MAE
-  sauvegarder le modele entraine + ses infos, de facon horodatee versionnement
-
-prediction /prediction.py
-
-Trouve et charge le modele le plus recent dans le dossier donne.
-  # glob.glob() renvoie la liste des fichiers qui correspondent a un motif.
-  # Le "*" remplace n'importe quelle partie du nom (ici, la date/heure).
-      # Le nom des fichiers contient la date au format AAAA-MM-JJTHH-MM-SS.
-    # Trier ces noms par ordre alphabetique revient a les trier par date,
-    # car ce format ecrit les nombres du plus "grand" (annee) au plus
-    # "petit" (secondes) -> l'ordre alphabetique suit l'ordre chronologique.
-      # Le dernier element de la liste triee est donc le plus recent.
-  Calcule une prediction de consommation a partir d'un dict d'entrees.
-    on construit un DataFrame a une seule ligne, avec les colonnes
-    # DANS LE MEME ORDRE que lors de l'entrainement. Sinon le modele
-    # se trompe de colonne (ex. il croit que "eolien" est "heure").
+ingerer(fichier_entree, fichier_sortie)
+    La fonction chef d'orchestre de ce fichier. Elle lit le JSON, boucle sur
+    chaque enregistrement, appelle valider_enregistrement() puis
+    convertir_enregistrement() pour chacun, et écrit le résultat en CSV.
+    Renvoie trois informations : le nombre de lignes gardées, le nombre de
+    lignes rejetées, et le chemin du CSV créé.
 
 
-pip install fastapi uvicorn
+3. ingestion/ingestion_meteo.py
 
-fastapi le framework qui définit les routes (/predict)
-uvicorn → le serveur qui fait réellement tourner l'API (FastAPI décrit ce qu'il faut faire, uvicorn l'exécute)
+rôle du fichier : même logique que ingestion.py, mais pour la météo.
 
-prediction/api.py
-    # Le modele est charge UNE SEULE FOIS, au demarrage du service.
-    # Le recharger a chaque requete serait lent (relire un fichier a chaque
-    # appel) et inutile (le fichier ne change pas entre deux requetes)
+ingerer_meteo(fichier_entree, fichier_sortie)
+    Le JSON d'Open-Meteo est organisé différemment de celui de RTE : au lieu
+    d'une liste d'enregistrements, il donne plusieurs listes parallèles
+    (une liste de dates, une liste de températures, une liste d'humidités).
+    La fonction zip() recombine ces listes ligne par ligne, comme si on
+    alignait trois colonnes d'un tableau. Le résultat est écrit en CSV avec
+    les colonnes date_heure, temperature, humidite
 
-        Microservice de prediction - API FastAPI.
 
-        Ce fichier rend le modele de prediction accessible par le reseau,
-        sous forme d'une petite API web
-         Un autre service (comme le Gateway Express) pourra lui envoyer une requete pour obtenir une prediction
-        sans avoir besoin d'executer du code Python lui-meme.
+4. etl/Etl.py
 
-        Au demarrage du service :
-          . le modele le plus recent est charge depuis le dossier models/
-          .si aucun modele n'est trouve, le service demarre quand meme,
-            mais repondra une erreur claire (503) a chaque demande de
-            prediction, plutot que de planter completement
+Rôle du fichier prendre le CSV unifié et le charger réellement dans la
+base de données MySQL, tout en gardant une copie brute dans le datalake
 
-        Route disponible :
-          POST /predict
-            Recoit les donnees d'entree en JSON (heure, jour, meteo, etc.),
-            et renvoie la prediction de consommation en MW, avec la version
-            du modele utilise et l'heure de la reponse.
+connecter_db()
+    Ouvre une connexion à MySQL. Les identifiants (adresse, utilisateur,
+    mot de passe, nom de la base) ne sont jamais écrits dans le code : ils
+    sont lus depuis les variables d'environnement (fichier .env), pour ne
+    jamais exposer un mot de passe dans Git
+
+charger_lignes_csv(fichier_entree)
+    Ouvre le CSV unifié et renvoie son contenu sous forme de liste de
+    dictionnaires (une ligne = un dictionnaire {colonne: valeur})
+
+inserer_dans_mysql(connexion, lignes)
+    Insère chaque ligne dans la table consommation. Utilise la commande SQL
+    INSERT IGNORE : si une ligne avec la même date_heure existe déjà,
+    MySQL l'ignore silencieusement au lieu de renvoyer une erreur. Cela
+    permet de relancer le script plusieurs fois sans créer de doublons
+    Renvoie le nombre de lignes vraiment insérées et le nombre ignorées
+
+sauvegarder_datalake(fichier_entree, dossier_datalake)
+    Fait une copie du CSV dans le dossier datalake, avec la date et l'heure
+    dans le nom du fichier (ex : eco2mix-2026-08-19T10-00-00.csv). C'est un
+    historique brut de chaque extraction, séparé de MySQL — utile si on veut
+    un jour revenir en arrière ou vérifier ce qui a été extrait tel jour
+
+executer_etl(fichier_entree, dossier_datalake)
+    La fonction chef d'orchestre : elle charge le CSV, ouvre la connexion,
+    insère les lignes, ferme la connexion, puis fait la copie datalake.
+    Renvoie le nombre de lignes insérées, le nombre ignorées, et le chemin
+    de la copie datalake
+
+
+5. entrainement/entrainement.py
+
+Rôle du fichier lire les données stockées en base, entraîner un modèle de
+machine learning capable de prédire la consommation, et sauvegarder ce
+modèle de façon à pouvoir le retrouver plus tard
+
+connect_db()
+    Identique à connecter_db() dans Etl.py (ouvre la connexion MySQL avec
+    les identifiants du .env). Le nom est légèrement différent
+    (connect_db vs connecter_db) — un détail à uniformiser un jour
+
+charger_donnees()
+    Se connecte à MySQL, récupère toute la table consommation dans un
+    tableau pandas (DataFrame), convertit les colonnes date_heure et
+    consommation dans le bon type, et supprime les lignes où ces deux
+    colonnes seraient vides (dropna). Renvoie le DataFrame nettoyé
+
+creer_features(df)
+    Une "feature" est une information que le modèle utilise pour apprendre.
+    Cette fonction fabrique de nouvelles colonnes à partir de date_heure :
+    l'heure de la journée, le jour de la semaine (0 = lundi ... 6 =
+    dimanche), le mois, et un indicateur weekend (1 si samedi/dimanche,
+    sinon 0). Le modèle ne comprend pas une date directement — il faut lui
+    donner des nombres exploitables
+
+sauvegarder_modele(model,mae,features,nb_train,nb_test,dossier_modeles)
+    Sauvegarde le modèle entraîné dans un fichier .pkl (avec joblib), avec
+    un nom horodaté (ex : modele_consommation_2026-08-19T10-00-00.pkl).
+    Sauvegarde aussi un fichier .json à côté, avec les informations sur ce
+    modèle : quelles features ont été utilisées, quelle est sa précision
+    (MAE), combien de lignes ont servi à l'entraîner. C'est ce qui permet de
+    garder une trace de chaque version du modèle
+
+entrainer()
+    La fonction chef d'orchestre : charge les données, crée les features,
+    choisit la liste de colonnes à utiliser comme entrée (features) et la
+    colonne à prédire (consommation), sépare les données en un jeu
+    d'entraînement (80%) et un jeu de test (20%), entraîne un
+    RandomForestRegressor sur le jeu d'entraînement, mesure son erreur
+    moyenne (MAE) sur le jeu de test, puis sauvegarde le tout. Renvoie la
+    MAE et les chemins des fichiers créés
+
+    Qu'est-ce qu'un RandomForestRegressor ? C'est un algorithme qui
+    construit plusieurs "arbres de décision" différents (chacun regarde les
+    features dans un ordre un peu différent) et fait la moyenne de leurs
+    prédictions. Cette moyenne est en général plus fiable qu'un seul arbre
+
+    Qu'est-ce que la MAE (Mean Absolute Error) ? C'est la moyenne des
+    écarts, en valeur absolue, entre ce que le modèle a prédit et la vraie
+    valeur. Une MAE de 1100 MW veut dire qu'en moyenne, le modèle se trompe
+    de 1100 MW dans un sens ou dans l'autre. Plus la MAE est petite, plus le
+    modèle est précis.
+
+
+6. prediction/prediction.py
+
+rôle du fichier charger un modèle déjà entraîné et l'utiliser pour
+produire une prédiction, sans jamais le réentraîner
+
+charger_dernier_modele(dossier_modeles)
+    Cherche tous les fichiers .pkl dans le dossier models/ (avec
+    glob.glob), les trie par ordre alphabétique. Comme les noms de fichiers
+    contiennent la date au format AAAA-MM-JJTHH-MM-SS, trier par ordre
+    alphabétique revient à trier par date — le dernier de la liste est donc
+    le plus récent. Charge ce modèle avec joblib.load(). Renvoie le modèle
+    chargé et son "nom de version" (le nom du fichier sans l'extension
+    .pkl). Si aucun fichier n'est trouvé, lève une erreur explicite
+    (FileNotFoundError) plutôt que de planter avec un message obscur
+
+predire(model, entrees)
+    Prend un dictionnaire de valeurs d'entrée (heure, jour_semaine, mois,
+    nucleaire, eolien, solaire, hydraulique, taux_co2), construit un
+    DataFrame d'une seule ligne, dans le MEME ordre de colonnes que lors de
+    l'entraînement (très important : sinon le modèle confondrait une
+    colonne avec une autre), puis appelle model.predict() dessus. Renvoie
+    la prédiction sous forme de nombre simple (float)
+
+
+7. prediction/api.py
+
+
+rôle du fichier transformer les fonctions de prediction.py en un vrai
+service web, que d'autres programmes (comme le Gateway Express) peuvent
+appeler par le réseau, sans avoir besoin d'exécuter du code Python
+eux-mêmes.
+
+EntreePrediction (classe Pydantic)
+    Ce n'est pas une fonction mais un "modèle de données" : il décrit
+    précisément quels champs et quels types sont attendus dans une requête
+    (heure: entier, jour_semaine: entier, ... taux_co2: nombre décimal).
+    FastAPI utilise cette classe pour vérifier automatiquement que les
+    données reçues sont valides, et renvoie une erreur claire si un champ
+    manque ou a le mauvais type.
+
+Chargement du modèle au démarrage (hors fonction, exécuté une fois)
+    Au lancement du service, le code appelle charger_dernier_modele() une
+    seule fois et garde le résultat en mémoire. Le recharger à chaque
+    requête serait lent (relire un fichier à chaque appel) et inutile
+    (le fichier ne change pas entre deux requêtes). Si aucun modèle n'est
+    trouvé, le service démarre quand même, mais avec modele = None.
+
+predict(entree) — route POST /predict
+    C'est la fonction appelée à chaque fois qu'un client envoie une requête
+    à /predict. Si aucun modèle n'est chargé (modele is None), elle renvoie
+    une erreur HTTP 503 avec un message explicite, plutôt que de planter.
+    Sinon, elle appelle predire() avec les données reçues, et renvoie un
+    JSON contenant la prédiction en MW, la version du modèle utilisé, et
+    l'heure de la réponse.
+
+
+8. index.py
+
+
+rôle du fichier : lancer tout le pipeline d'un coup, dans l'ordre :
+extraction -> ingestion -> ETL.
+
+main()
+    Appelle telecharger_json() (étape 1), puis ingerer() (étape 2), puis
+    executer_etl() (étape 3), en affichant à chaque étape un petit résumé
+    de ce qui s'est passé (nombre de lignes valides/rejetées, nombre de
+    lignes insérées en base). C'est le point d'entrée pratique pour tout
+    relancer sans exécuter chaque script un par un.
+
+
+

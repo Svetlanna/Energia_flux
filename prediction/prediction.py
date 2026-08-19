@@ -49,7 +49,7 @@ def predire(model, entrees):
 
 
 if __name__ == "__main__":
-    model = charger_dernier_modele("../models")
+    model, version = charger_dernier_modele("../models")
 
     exemple = {
         "heure": 14,
@@ -63,12 +63,5 @@ if __name__ == "__main__":
     }
 
     resultat = predire(model, exemple)
+    print(f"Modele utilise : {version}")
     print(f"Prediction : {resultat:.0f} MW")
-
-
-
-
-if __name__ == "__main__":
-
-    model, version = charger_dernier_modele("../models")
-    print(model)
