@@ -38,9 +38,6 @@ def convertir_enregistrement(fields):
 
 def ingerer(fichier_entree, fichier_sortie):
 
-    # Lit le JSON brut valide et convertit chaque enregistrement,
-    # puis sauvegarde le resultat en CSV.
-
     with open(fichier_entree, "r", encoding="utf-8") as f:
         donnees_brutes = json.load(f)
 
