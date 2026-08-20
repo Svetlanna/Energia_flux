@@ -26,16 +26,7 @@ def charger_dernier_modele(dossier_modeles):
 
 
 
-FEATURES = [
-    "heure",
-    "jour_semaine",
-    "mois",
-    "nucleaire",
-    "eolien",
-    "solaire",
-    "hydraulique",
-    "taux_co2",
-]
+FEATURES = ["heure", "jour_semaine", "mois", "weekend", "temperature", "humidite"]
 
 
 def predire(model, entrees):
@@ -50,16 +41,10 @@ def predire(model, entrees):
 
 if __name__ == "__main__":
     model, version = charger_dernier_modele("../models")
-
+    
     exemple = {
-        "heure": 14,
-        "jour_semaine": 2,
-        "mois": 8,
-        "nucleaire": 40000,
-        "eolien": 5000,
-        "solaire": 3000,
-        "hydraulique": 5000,
-        "taux_co2": 30,
+        "heure": 14, "jour_semaine": 2, "mois": 8,
+        "weekend": 0, "temperature": 24.5, "humidite": 55,
     }
 
     resultat = predire(model, exemple)
