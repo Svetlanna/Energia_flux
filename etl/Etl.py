@@ -1,10 +1,3 @@
-# lit le CSV unifie (ingestion.py)
-#   1. Stocke chaque ligne dans MySQL table consommation.
-#   2. Garde une copie horodatee dans le datalake (historique brut des extractions).
-
-# Les identifiants MySQL sont lus depuis les variables d'environnement (.env),
-# jamais ecrits en dur dans le code.
-
 import os
 import csv
 import shutil
@@ -32,7 +25,6 @@ def connecter_db():
 
 def charger_lignes_csv(fichier_entree):
 
-    # Lit le CSV unifie et retourne la liste des lignes
 
     with open(fichier_entree, "r", encoding="utf-8") as f:
         return list(csv.DictReader(f))
@@ -72,9 +64,6 @@ def inserer_dans_mysql(connexion, lignes):
 
 def sauvegarder_datalake(fichier_entree, dossier_datalake):
 
-    # copie le CSV unifie dans le datalake, avec un nom horodate, pour garder
-    # un historique des extractions
-
     os.makedirs(dossier_datalake, exist_ok=True)
     horodatage = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
     chemin_copie = os.path.join(dossier_datalake, f"eco2mix-{horodatage}.csv")
@@ -99,6 +88,6 @@ def executer_etl(fichier_entree, dossier_datalake):
 if __name__ == "__main__":
     print("ETL et stockage...")
     nb_ok, nb_ignore, chemin = executer_etl(FICHIER_ENTREE, DOSSIER_DATALAKE)
-    print(f"  MySQL : {nb_ok} ligne(s) inseree(s), {nb_ignore} deja presente(s)")
+    print(f"  MySQL : {nb_ok} lignes inserees, {nb_ignore} deja presentes")
     print(f"  Datalake : copie enregistree sous {chemin}")
     print("Termine.")
