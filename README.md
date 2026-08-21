@@ -134,10 +134,3 @@ Requête `POST http://127.0.0.1:3000/api/prediction`, body JSON
 `heure` : 0-23. `jour_semaine` : 0 = lundi ... 6 = dimanche. `mois` : 1-12. `weekend` : 0 ou 1. `temperature` en °C, `humidite` en %
 
 La première requête renvoie `"depuis_cache": false`. La même requête répétée dans les 10 minutes renvoie `"depuis_cache": true`
-
-## Points de vigilance pour l'équipe
-
-- Les colonnes `nucleaire, eolien, solaire, hydraulique, taux_co2` de la table `consommation` ne sont plus utilisées comme features du modèle (décision prise pour éviter une fuite de données : ces valeurs ne sont pas connues à l'avance en usage réel).
-- Les colonnes `consommation_reelle_observee` et `erreur_absolue` de la table `prediction` existent dans le schéma mais rien ne les remplit encore automatiquement — il manque un script qui compare, après coup, la prédiction à la vraie valeur observée.
-- Dans `gateway/server.js`, la liste des champs relayés vers FastAPI est écrite en dur. Si la liste de features du modèle change un jour, il faut penser à la mettre à jour ici aussi.
-- `models/` et `data/datalake/` ne sont pas versionnés dans git (fichiers volumineux et régénérables)
