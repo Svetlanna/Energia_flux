@@ -133,4 +133,4 @@ Requête `POST http://127.0.0.1:3000/api/prediction`, body JSON
 
 `heure` : 0-23. `jour_semaine` : 0 = lundi ... 6 = dimanche. `mois` : 1-12. `weekend` : 0 ou 1. `temperature` en °C, `humidite` en %
 
-La première requête renvoie `"depuis_cache": false`. La même requête répétée dans les 10 minutes renvoie `"depuis_cache": true`
+
